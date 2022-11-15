@@ -50,7 +50,7 @@
 
 // USART Serial baud rate
 // #define BAUD_RATE 115200
-#define BAUD_RATE 921600
+#define BAUD_RATE 57600
 
 
 // --- YSV 22-06-2018
