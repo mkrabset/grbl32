@@ -220,7 +220,7 @@ uint8_t system_execute_line(char *line)
           break;
         case 'G' : // Prints gcode parser state
           // TODO: Move this to realtime commands for GUIs to request this data during suspend-state.
-          report_gcode_modes();   // TODO: Maybe comment this out
+          //report_gcode_modes();   // TODO: Maybe comment this out
           break;
         case 'C' : // Set check g-code mode [IDLE/CHECK]
           // Perform reset when toggling off. Check g-code mode should only work if Grbl
