@@ -1,0 +1,98 @@
+
+Sensor:
+The sensor switches are of type "M8 2mm DC5V NPN NO LJ8A3-2-Z/BX-5V Inductive Proximity Sensor Switch"
+Important is
+ * 5V VCC (Isolate sensor vcc from mcu just in case)
+ * NPN (low side sinking switch) When open, pullup sets output voltage, when closed output voltage is zero.
+ * NO, Normal open eg.:
+  - When not triggered, output is HIGH.     (open and pulled up by pullup)
+  - When triggered, output is LOW.          (closed and pulled down to zero)
+  
+  
+Homing direction:
+Homing direction ($23) can be set individually pr. axis, default is positive direction. 
+- For X-axis it may make sense to switch to negative, so that x-home is to the left.
+- For Y-axis we will keep the default, eg. positive direction.
+- Foz Z-axis we will of course also keep the default.
+
+Direction-signals:
+Default for GRBL is to go in positive direction when dir-signal is low. Keep this setting, and wire the motors so that this is the case. ($3=0)
+
+
+Limit sensor input:
+Default for GRBL is to interpret limit-probe input as:
+* LOW = triggered
+* HIGH = normally
+Keep this for all axis. ($5=0)
+
+
+Limit-signal pullups:
+- X signal is pulled up to 3.3V by 1k pullup resistors, and connected to pin B12  
+- Z signal is pulled up to 3.3V by 1k pullup resistors, and connected to pin B14
+- YL signal is pulled up by 5V and connected to 'auto squaring logic'
+- YR signal is pulled up by 5V and connected to 'auto squaring logic'
+
+
+Auto squaring logic:
+The limit-probe input for Y-axis (pin B13) needs an input that indicate normal (eg. HIGH) when at least one of YL or YR indicates normal (eg. is HIGH). 
+The expression for this is: Yinput = YL | YR
+(We want the controller to consider Y axis limit as reached only when BOTH left and right are triggered)
+So the pulled up YL and YR-signal need to be combined with an OR-gate, and the result needs to be lowered to 3.3 volt (by a 1k/2k voltage divider) before entering pin B13.
+
+The step signals for YL and YR also needs some logic. The expression is:
+YstepL = Ystep & (Ydir | YLsensor)
+YstepR = Ystep & (Ydir | YRsensor)
+
+(Ystep need to be triggered (of course)..., 
+AND... 
+we need to EITHER 
+move away from the sensor (Ydir is HIGH, eg. moving in negative direction)
+OR
+the limit switch is normal (eg. HIGH = not triggered)
+
+So for each side, left or right, the step-signals is allowed to get through if moving away from the limit-switch, or the limit-switch is not triggered
+
+
+
+
+Pins
+=====
+Steppers:
+	enable:		a1 / a15
+	xstep:		a2
+	xdir:		a3
+	ystep:		a4
+	ydir:		a5
+	zstep:		a6
+	zdir:		a7
+	
+Probes:
+	x:		b12
+	y:		b13
+	z:		b14
+	
+Spindle:
+	pwm:		a8
+	enable:		b1
+	dir:		b0
+	
+Div:
+	probe:		b9
+	door:		b8
+	cycle_start:	b7
+	feed_hold:	b6
+	ctrl_reset:	b5
+	flood:		b4
+	mist:		b3
+
+
+
+
+
+
+
+
+
+
+
+
