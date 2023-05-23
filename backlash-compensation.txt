@@ -1,0 +1,4 @@
+The backlash-compensation code is ported from https://github.com/Schildkroet/GRBL-Advanced, licence file here: https://github.com/Schildkroet/GRBL-Advanced/blob/backlash/LICENSE
+
+
+
