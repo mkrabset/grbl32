@@ -111,6 +111,10 @@ uint8_t gc_execute_line(char *line)
   float value;
   uint8_t int_value = 0;
   uint16_t mantissa = 0;
+	float old_xyz[N_AXIS] = {0.0};
+
+	memcpy(old_xyz, gc_state.position, N_AXIS*sizeof(float));
+
   if (gc_parser_flags & GC_PARSER_JOG_MOTION) { char_counter = 3; } // Start parsing after `$J=`
   else { char_counter = 0; }
 
@@ -181,6 +185,19 @@ uint8_t gc_execute_line(char *line)
               mantissa = 0; // Set to zero to indicate valid non-integer G command.
             }  
             break;
+
+            case 81: case 82: case 83:  // Canned drilling cycles
+              word_bit = MODAL_GROUP_G1;
+              //gc_block.modal.motion = MOTION_MODE_DRILL;
+              gc_block.modal.motion = int_value;
+              break;
+
+            // Set retract mode
+            case 98: case 99:
+              word_bit = MODAL_GROUP_G10;
+              gc_block.modal.retract = int_value - 98;
+              break;
+
           case 17: case 18: case 19:
             word_bit = MODAL_GROUP_G2;
             gc_block.modal.plane_select = int_value - 17;
@@ -466,6 +483,38 @@ uint8_t gc_execute_line(char *line)
     if (bit_isfalse(value_words,bit(WORD_P))) { FAIL(STATUS_GCODE_VALUE_WORD_MISSING); } // [P word missing]
     bit_false(value_words,bit(WORD_P));
   }
+
+  // [10.1 Canned drilling cycle]: R/P/Q value missing.
+	if(gc_block.modal.motion == MOTION_MODE_DRILL || gc_block.modal.motion == MOTION_MODE_DRILL_DWELL || gc_block.modal.motion == MOTION_MODE_DRILL_PECK)
+    {
+        if(bit_isfalse(value_words, bit(WORD_R)))
+        {
+            // [R word missing]
+			return STATUS_GCODE_VALUE_WORD_MISSING;
+        }
+        bit_false(value_words, bit(WORD_R));
+
+        if(gc_block.modal.motion == MOTION_MODE_DRILL_DWELL)
+        {
+            if(bit_isfalse(value_words, bit(WORD_P)))
+            {
+                // [P word missing]
+                return STATUS_GCODE_VALUE_WORD_MISSING;
+            }
+            // TODO: Check validity of P
+            bit_false(value_words, bit(WORD_P));
+        }
+        if(gc_block.modal.motion == MOTION_MODE_DRILL_PECK)
+        {
+            if(bit_isfalse(value_words, bit(WORD_Q)))
+            {
+                // [Q word missing]
+                return STATUS_GCODE_VALUE_WORD_MISSING;
+            }
+            // TODO: Check validity of Q
+            bit_false(value_words, bit(WORD_Q));
+        }
+    }
 
   // [11. Set active plane ]: N/A
   switch (gc_block.modal.plane_select) {
@@ -836,6 +885,13 @@ uint8_t gc_execute_line(char *line)
           if (!axis_words) { FAIL(STATUS_GCODE_NO_AXIS_WORDS); } // [No axis words]
           if (isequal_position_vector(gc_state.position, gc_block.values.xyz)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Invalid target]
           break;
+
+
+        case MOTION_MODE_DRILL: case MOTION_MODE_DRILL_DWELL: case MOTION_MODE_DRILL_PECK:
+          if(bit_true(value_words, (bit(WORD_L)))) {}
+          bit_false(value_words, bit(WORD_L));
+          break;
+
       }
     }
   }
@@ -1089,7 +1145,105 @@ uint8_t gc_execute_line(char *line)
       } else if ((gc_state.modal.motion == MOTION_MODE_CW_ARC) || (gc_state.modal.motion == MOTION_MODE_CCW_ARC)) {
           mc_arc(gc_block.values.xyz, pl_data, gc_state.position, gc_block.values.ijk, gc_block.values.r,
               axis_0, axis_1, axis_linear, bit_istrue(gc_parser_flags, GC_PARSER_ARC_IS_CLOCKWISE));
-      } else {
+      } else if(gc_state.modal.motion == MOTION_MODE_DRILL || gc_state.modal.motion == MOTION_MODE_DRILL_DWELL || gc_state.modal.motion == MOTION_MODE_DRILL_PECK) {
+          float xyz[N_AXIS] = {0.0};
+          float clear_z = gc_block.values.r + gc_state.coord_system[Z_AXIS] + gc_state.coord_offset[Z_AXIS];
+          float delta_x = 0.0;
+          float delta_y = 0.0;
+
+          if(gc_state.modal.distance == DISTANCE_MODE_INCREMENTAL) {
+            clear_z += old_xyz[Z_AXIS];
+            gc_block.values.xyz[Z_AXIS] = clear_z + (gc_block.values.xyz[Z_AXIS] - old_xyz[Z_AXIS]);
+
+            delta_x = gc_block.values.xyz[X_AXIS] - old_xyz[X_AXIS];
+            delta_y = gc_block.values.xyz[Y_AXIS] - old_xyz[Y_AXIS];
+          }
+
+          //-- [G81] --
+
+          // 0. Check if old_z < clear_z
+          if(old_xyz[Z_AXIS] < clear_z) {
+            memcpy(xyz, old_xyz, N_AXIS*sizeof(float));
+            xyz[Z_AXIS] = clear_z;
+
+            pl_data->condition |= PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+            mc_line(xyz, pl_data);
+          } else {
+            // Reset z to old/current z
+            xyz[Z_AXIS] = old_xyz[Z_AXIS];
+          }
+
+          if(gc_block.values.l == 0) {
+            // Force at least one iteration of loop
+            gc_block.values.l = 1;
+          }
+
+          for(uint8_t repeat = 0; repeat < gc_block.values.l; repeat++) {
+            // 1. Rapid move to XY (XY)
+            xyz[X_AXIS] = gc_block.values.xyz[X_AXIS] + (delta_x*repeat);
+            xyz[Y_AXIS] = gc_block.values.xyz[Y_AXIS] + (delta_y*repeat);
+            pl_data->condition |= PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+            mc_line(xyz, pl_data);
+
+            // 2. Rapid move to R (Z)
+            xyz[Z_AXIS] = clear_z;
+            pl_data->condition |= PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+            mc_line(xyz, pl_data);
+
+            if(gc_state.modal.motion != MOTION_MODE_DRILL_PECK)
+            {
+              // 3. Move the Z-axis at the current feed rate to the Z position.
+              pl_data->condition &= ~PL_COND_FLAG_RAPID_MOTION;   // Clear rapid move
+              xyz[Z_AXIS] = gc_block.values.xyz[Z_AXIS];
+              mc_line(xyz, pl_data);
+            } else {
+              // G83
+              for(float curr_z = clear_z - gc_block.values.q; curr_z >= gc_block.values.xyz[Z_AXIS] - 0.001; curr_z -= gc_block.values.q) {
+                // Check if target depth exceeds final depth
+                if(curr_z < gc_block.values.xyz[Z_AXIS])
+                {
+                  curr_z = gc_block.values.xyz[Z_AXIS];
+                }
+
+                // Move the Z-axis at the current feed rate to the Z position.
+                pl_data->condition &= ~PL_COND_FLAG_RAPID_MOTION;   // Clear rapid move
+                xyz[Z_AXIS] = curr_z;
+                mc_line(xyz, pl_data);
+
+                // Rapid move to R
+                xyz[Z_AXIS] = clear_z;
+                pl_data->condition |= PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+                mc_line(xyz, pl_data);
+
+                // Rapid move to bottom of hole (backed off a bit)
+                xyz[Z_AXIS] = curr_z + 0.4;
+                pl_data->condition |= PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+                mc_line(xyz, pl_data);
+              }
+            }
+
+            if(gc_state.modal.motion == MOTION_MODE_DRILL_DWELL)
+            {
+              // [G82]
+              mc_dwell(gc_block.values.p);
+            }
+
+            // 4. The Z-axis does a rapid move to clear Z.
+            if((gc_state.modal.retract == RETRACT_OLD_Z) && clear_z < old_xyz[Z_AXIS])
+            {
+              // Retract to OLD_Z
+              xyz[Z_AXIS] = old_xyz[Z_AXIS];
+            } else {
+              // Retract to r
+              xyz[Z_AXIS] = clear_z;
+            }
+
+            pl_data->condition |= PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+            mc_line(xyz, pl_data);
+        }
+        // Update position
+        memcpy(gc_block.values.xyz, xyz, N_AXIS*sizeof(float));
+        } else {
         // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
         // upon a successful probing cycle, the machine position and the returned value should be the same.
         #ifndef ALLOW_FEED_OVERRIDE_DURING_PROBE_CYCLES
