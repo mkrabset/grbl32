@@ -104,7 +104,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
 #ifdef ENABLE_BACKLASH_COMPENSATION
 
     pl_backlash.backlash_motion = 1;
-    pl_backlash.condition = PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+    pl_backlash.condition = pl_data->condition | PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
 
 	  // Backlash compensation
     for(uint8_t i = 0; i < N_AXIS; i++)
