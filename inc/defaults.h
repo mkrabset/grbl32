@@ -84,10 +84,9 @@
 #define DEFAULT_ANALOG_MAX 10000.0f //analog value		$40
 #define DEFAULT_VARIABLE_SPINDLE_ENABLE_PIN 0               //$50
 
-
-#define DEFAULT_X_BACKLASH                0.05     // mm
-#define DEFAULT_Y_BACKLASH                0.05     // mm
-#define DEFAULT_Z_BACKLASH                0.05     // mm
+#define DEFAULT_X_BACKLASH                0.01     // mm
+#define DEFAULT_Y_BACKLASH                0.01     // mm
+#define DEFAULT_Z_BACKLASH                0.01     // mm
 
 #endif
 

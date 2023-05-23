@@ -41,6 +41,8 @@
 #define MODAL_GROUP_G12 9 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
 #define MODAL_GROUP_G13 10 // [G61] Control mode
 
+#define MODAL_GROUP_G10 11  // [G98, G99] Canned Cycles Return Mode
+
 #define MODAL_GROUP_M4 11  // [M0,M1,M2,M30] Stopping
 #define MODAL_GROUP_M7 12 // [M3,M4,M5] Spindle turning
 #define MODAL_GROUP_M8 13 // [M7,M8,M9] Coolant control
@@ -75,6 +77,10 @@
 #define MOTION_MODE_PROBE_AWAY 142 // G38.4 (Do not alter value)
 #define MOTION_MODE_PROBE_AWAY_NO_ERROR 143 // G38.5 (Do not alter value)
 #define MOTION_MODE_NONE 80 // G80 (Do not alter value)
+
+#define MOTION_MODE_DRILL                   81  // G81
+#define MOTION_MODE_DRILL_DWELL             82  // G82
+#define MOTION_MODE_DRILL_PECK              83  // G83
 
 // Modal Group G2: Plane select
 #define PLANE_SELECT_XY 0 // G17 (Default: Must be zero)
@@ -123,6 +129,10 @@
 #define TOOL_LENGTH_OFFSET_CANCEL 0 // G49 (Default: Must be zero)
 #define TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC 1 // G43.1
 
+// Modal Group G10: Canned Cycle Return Level
+#define RETRACT_OLD_Z                        0 // G98 (Default: Must be zero)
+#define RETRACT_SPECIFIED_R                  1
+
 // Modal Group M9: Override control
 #ifdef DEACTIVATE_PARKING_UPON_INIT
 	#define OVERRIDE_DISABLED  0 // (Default: Must be zero)
@@ -149,6 +159,8 @@
 #define WORD_X  10
 #define WORD_Y  11
 #define WORD_Z  12
+#define WORD_Q  13
+
 // --- YSV 22-06-2018
 #if defined(AA_AXIS) || defined(AB_AXIS) || defined(ABC_AXIS)
 #define WORD_A  13
@@ -195,6 +207,7 @@ typedef struct {
   uint8_t feed_rate;       // {G93,G94}
   uint8_t units;           // {G20,G21}
   uint8_t distance;        // {G90,G91}
+  uint8_t retract;         // {G98,G99}
   // uint8_t distance_arc; // {G91.1} NOTE: Don't track. Only default supported.
   uint8_t plane_select;    // {G17,G18,G19}
   // uint8_t cutter_comp;  // {G40} NOTE: Don't track. Only default supported.
@@ -213,7 +226,7 @@ typedef struct {
   uint8_t l;       // G10 or canned cycles parameters
   int32_t n;       // Line number
   float p;         // G10 or dwell parameters
-  // float q;      // G82 peck drilling
+  float q;         // G82 peck drilling
   float r;         // Arc radius
   float s;         // Spindle speed
   uint8_t t;       // Tool selection

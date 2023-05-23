@@ -325,7 +325,7 @@ uint8_t gc_execute_line(char *line)
           case 'N': word_bit = WORD_N; gc_block.values.n = truncf(value); break;
           case 'P': word_bit = WORD_P; gc_block.values.p = value; break;
           // NOTE: For certain commands, P value must be an integer, but none of these commands are supported.
-          // case 'Q': // Not supported
+          case 'Q': word_bit = WORD_Q; gc_block.values.q = value; break;
           case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
           case 'S': word_bit = WORD_S; gc_block.values.s = value; break;
 		  case 'T': word_bit = WORD_T;
@@ -529,6 +529,7 @@ uint8_t gc_execute_line(char *line)
   // [16. Set path control mode ]: N/A. Only G61. G61.1 and G64 NOT SUPPORTED.
   // [17. Set distance mode ]: N/A. Only G91.1. G90.1 NOT SUPPORTED.
   // [18. Set retract mode ]: NOT SUPPORTED.
+  gc_state.modal.retract = gc_block.modal.retract;
 
   // [19. Remaining non-modal actions ]: Check go to predefined position, set G10, or set axis offsets.
   // NOTE: We need to separate the non-modal commands that are axis word-using (G10/G28/G30/G92), as these
@@ -880,7 +881,7 @@ uint8_t gc_execute_line(char *line)
   if (gc_parser_flags & GC_PARSER_JOG_MOTION) {
       // Only distance and unit modal commands and G53 absolute override command are allowed.
       // NOTE: Feed rate word and axis word checks have already been performed in STEP 3.
-      if (command_words & ~(bit(MODAL_GROUP_G3) | bit(MODAL_GROUP_G6 | bit(MODAL_GROUP_G0)))) { FAIL(STATUS_INVALID_JOG_COMMAND) };
+      if (command_words & ~(bit(MODAL_GROUP_G3) | bit(MODAL_GROUP_G6) | bit(MODAL_GROUP_G0))) { FAIL(STATUS_INVALID_JOG_COMMAND) };
       if (!(gc_block.non_modal_command == NON_MODAL_ABSOLUTE_OVERRIDE || gc_block.non_modal_command == NON_MODAL_NO_ACTION)) { FAIL(STATUS_INVALID_JOG_COMMAND); }
 
       // Initialize planner data to current spindle and coolant modal state.

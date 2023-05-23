@@ -24,6 +24,20 @@
 static float target_prev[N_AXIS] = {0.0};
 static uint8_t dir_negative[N_AXIS] = {0};
 
+
+void mc_init(void)
+{
+    int32_t current_position[N_AXIS]; // Copy current state of the system position variable
+
+    for(uint8_t i = 0; i < N_AXIS; i++)
+    {
+        dir_negative[i] = 0;
+    }
+
+	memcpy(current_position, sys_position, sizeof(sys_position));
+	system_convert_array_steps_to_mpos(target_prev, current_position);
+}
+
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
