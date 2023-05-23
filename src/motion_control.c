@@ -34,6 +34,7 @@ static uint8_t dir_negative[N_AXIS] = {0};
 void mc_line(float *target, plan_line_data_t *pl_data)
 {
     plan_line_data_t pl_backlash = {0};
+    uint8_t backlash_update = 0;
 
     pl_backlash.spindle_speed = pl_data->spindle_speed;
     #ifdef USE_LINE_NUMBERS
@@ -78,7 +79,11 @@ void mc_line(float *target, plan_line_data_t *pl_data)
 
 
 #ifdef ENABLE_BACKLASH_COMPENSATION
-	// Backlash compensation
+
+    pl_backlash.backlash_motion = 1;
+    pl_backlash.condition = PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+
+	  // Backlash compensation
     for(uint8_t i = 0; i < N_AXIS; i++)
     {
         // Move positive?
@@ -90,11 +95,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
                 dir_negative[i] = 0;
                 target_prev[i] += settings.backlash[i];
 
-                // Backlash compensation
-                pl_backlash.backlash_motion = 1;
-                pl_backlash.condition = PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
-
-                plan_buffer_line(target_prev, &pl_backlash);
+                backlash_update = 1;
             }
         }
         // Move negative?
@@ -106,16 +107,38 @@ void mc_line(float *target, plan_line_data_t *pl_data)
                 dir_negative[i] = 1;
                 target_prev[i] -= settings.backlash[i];
 
-                // Backlash compensation
-                pl_backlash.backlash_motion = 1;
-                pl_backlash.condition = PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
-
-                plan_buffer_line(target_prev, &pl_backlash);
+                backlash_update = 1;
             }
         }
     }
 
+    if(backlash_update) {
+        // Perform backlash move if necessary
+        plan_buffer_line(target_prev, &pl_backlash);
+    }
+
     memcpy(target_prev, target, N_AXIS*sizeof(float));
+
+
+    // Backlash move needs a slot in planner buffer, so we have to check again, if planner is free
+    do {
+    
+		  protocol_execute_realtime(); // Check for any run-time commands
+
+		if(sys.abort) {
+			// Bail, if system abort.
+			return;
+		}
+
+		if(plan_check_full_buffer()) {
+			// Auto-cycle start when buffer is full.
+			protocol_auto_cycle_start();
+		}
+		else {
+			break;
+		}
+	} while(1);
+  
 #endif
 
 
