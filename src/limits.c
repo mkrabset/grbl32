@@ -446,6 +446,9 @@ void limits_go_home(uint8_t cycle_mask)
 
     }
   }
+
+  mc_init();
+
   sys.step_control = STEP_CONTROL_NORMAL_OP; // Return step control to normal operation.
 }
 
