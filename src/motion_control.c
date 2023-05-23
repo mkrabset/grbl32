@@ -23,7 +23,6 @@
 
 static float target_prev[N_AXIS] = {0.0};
 static uint8_t dir_negative[N_AXIS] = {0};
-static float backlash_comp[N_AXIS] = {DEFAULT_X_BACKLASH, DEFAULT_Y_BACKLASH, DEFAULT_Z_BACKLASH};
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -89,7 +88,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
             if(dir_negative[i] == 1)
             {
                 dir_negative[i] = 0;
-                target_prev[i] += backlash_comp[i];
+                target_prev[i] += settings.backlash[i];
 
                 // Backlash compensation
                 pl_backlash.backlash_motion = 1;
@@ -105,7 +104,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
             if(dir_negative[i] == 0)
             {
                 dir_negative[i] = 1;
-                target_prev[i] -= backlash_comp[i];
+                target_prev[i] -= settings.backlash[i];
 
                 // Backlash compensation
                 pl_backlash.backlash_motion = 1;

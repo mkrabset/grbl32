@@ -106,6 +106,13 @@ void settings_restore(uint8_t restore_flag) {
     settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
     settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
     settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);
+
+		settings.backlash[X_AXIS] = DEFAULT_X_BACKLASH;
+		settings.backlash[Y_AXIS] = DEFAULT_Y_BACKLASH;
+		settings.backlash[Z_AXIS] = DEFAULT_Z_BACKLASH;
+
+
+
 // --- YSV 22-06-2018
 	#if defined(AA_AXIS) || defined(AB_AXIS) || defined(ABC_AXIS)
     settings.steps_per_mm[A_AXIS] = DEFAULT_A_STEPS_PER_MM;
@@ -250,6 +257,7 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
             break;
           case 2: settings.acceleration[parameter] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
           case 3: settings.max_travel[parameter] = -value; break;  // Store as negative for grbl internal use.
+          case 4: settings.backlash[parameter] = value; break;
         }
         break; // Exit while-loop after setting has been configured and proceed to the EEPROM write call.
       } else {
