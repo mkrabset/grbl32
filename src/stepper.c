@@ -158,6 +158,7 @@ typedef struct {
   #ifdef VARIABLE_SPINDLE
     uint8_t spindle_pwm;
   #endif
+  uint8_t backlash_motion;
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
@@ -635,8 +636,13 @@ void Timer1Proc()
   if (st.counter_x > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<X_STEP_BIT);
     st.counter_x -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys_position[X_AXIS]--; }
-    else { sys_position[X_AXIS]++; }
+    if(st.exec_segment->backlash_motion == 0) {
+      if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { 
+        sys_position[X_AXIS]--; 
+      } else { 
+        sys_position[X_AXIS]++; 
+      }
+    }
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_y += st.steps[Y_AXIS];
@@ -646,8 +652,13 @@ void Timer1Proc()
   if (st.counter_y > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Y_STEP_BIT);
     st.counter_y -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys_position[Y_AXIS]--; }
-    else { sys_position[Y_AXIS]++; }
+    if(st.exec_segment->backlash_motion == 0) {
+      if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { 
+        sys_position[Y_AXIS]--; 
+      } else { 
+        sys_position[Y_AXIS]++; 
+      }
+    }
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_z += st.steps[Z_AXIS];
@@ -657,8 +668,13 @@ void Timer1Proc()
   if (st.counter_z > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Z_STEP_BIT);
     st.counter_z -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys_position[Z_AXIS]--; }
-    else { sys_position[Z_AXIS]++; }
+    if(st.exec_segment->backlash_motion == 0) {
+      if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { 
+        sys_position[Z_AXIS]--; 
+      } else { 
+        sys_position[Z_AXIS]++; 
+      }
+    }
   }
 // --- YSV 22-06-2018
   #if defined(AA_AXIS) || defined(AB_AXIS) || defined(ABC_AXIS)
@@ -1200,6 +1216,7 @@ void st_prep_buffer()
 
     // Set new segment to point to the current segment data block.
     prep_segment->st_block_index = prep.st_block_index;
+    prep_segment->backlash_motion = pl_block->backlash_motion;
 
     /*------------------------------------------------------------------------------------
         Compute the average velocity of this new segment by determining the total distance

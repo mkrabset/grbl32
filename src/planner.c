@@ -324,6 +324,7 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
   #ifdef USE_LINE_NUMBERS
     block->line_number = pl_data->line_number;
   #endif
+  block->backlash_motion = pl_data->backlash_motion;
 
   // Compute and store initial move distance data.
   int32_t target_steps[N_AXIS], position_steps[N_AXIS];
@@ -459,8 +460,10 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
     pl.previous_nominal_speed = nominal_speed;
 
     // Update previous path unit_vector and planner position.
-    memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
-    memcpy(pl.position, target_steps, sizeof(target_steps)); // pl.position[] = target_steps[]
+    if(block->backlash_motion == 0) {
+      memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
+      memcpy(pl.position, target_steps, sizeof(target_steps)); // pl.position[] = target_steps[]
+    }
 
     // New block is all set. Update buffer head and next buffer head indices.
     block_buffer_head = next_buffer_head;

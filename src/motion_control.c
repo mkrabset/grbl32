@@ -21,6 +21,9 @@
 
 #include "grbl.h"
 
+static float target_prev[N_AXIS] = {0.0};
+static uint8_t dir_negative[N_AXIS] = {0};
+static float backlash_comp[N_AXIS] = {DEFAULT_X_BACKLASH, DEFAULT_Y_BACKLASH, DEFAULT_Z_BACKLASH};
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -31,6 +34,16 @@
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
 void mc_line(float *target, plan_line_data_t *pl_data)
 {
+    plan_line_data_t pl_backlash = {0};
+
+    pl_backlash.spindle_speed = pl_data->spindle_speed;
+    #ifdef USE_LINE_NUMBERS
+      pl_backlash.line_number = pl_data->line_number;
+    #endif
+    pl_backlash.feed_rate = pl_data->feed_rate;
+
+
+
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
   if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) {
@@ -63,6 +76,49 @@ void mc_line(float *target, plan_line_data_t *pl_data)
     if ( plan_check_full_buffer() ) { protocol_auto_cycle_start(); } // Auto-cycle start when buffer is full.
     else { break; }
   } while (1);
+
+
+#ifdef ENABLE_BACKLASH_COMPENSATION
+	// Backlash compensation
+    for(uint8_t i = 0; i < N_AXIS; i++)
+    {
+        // Move positive?
+        if(target[i] > target_prev[i])
+        {
+            // Last move negative?
+            if(dir_negative[i] == 1)
+            {
+                dir_negative[i] = 0;
+                target_prev[i] += backlash_comp[i];
+
+                // Backlash compensation
+                pl_backlash.backlash_motion = 1;
+                pl_backlash.condition = PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+
+                plan_buffer_line(target_prev, &pl_backlash);
+            }
+        }
+        // Move negative?
+        else if(target[i] < target_prev[i])
+        {
+            // Last move positive?
+            if(dir_negative[i] == 0)
+            {
+                dir_negative[i] = 1;
+                target_prev[i] -= backlash_comp[i];
+
+                // Backlash compensation
+                pl_backlash.backlash_motion = 1;
+                pl_backlash.condition = PL_COND_FLAG_RAPID_MOTION; // Set rapid motion condition flag.
+
+                plan_buffer_line(target_prev, &pl_backlash);
+            }
+        }
+    }
+
+    memcpy(target_prev, target, N_AXIS*sizeof(float));
+#endif
+
 
   // Plan and queue motion into planner buffer
 	if (plan_buffer_line(target, pl_data) == PLAN_EMPTY_BLOCK) {

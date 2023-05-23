@@ -43,10 +43,13 @@
 #endif
 #ifdef AVRTARGET
 #define CPU_MAP_ATMEGA328P // Arduino Uno CPU
-#endif
+#endif 
 #ifdef STM32F103C8
 #define CPU_MAP_STM32F103
 #endif
+
+
+#define ENABLE_BACKLASH_COMPENSATION
 
 // USART Serial baud rate
 // #define BAUD_RATE 115200

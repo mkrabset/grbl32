@@ -86,6 +86,7 @@ typedef struct {
     // Stored spindle speed data used by spindle overrides and resuming methods.
     float spindle_speed;    // Block spindle speed. Copied from pl_line_data.
   #endif
+    uint8_t backlash_motion;
 } plan_block_t;
 
 
@@ -97,6 +98,7 @@ typedef struct {
   #ifdef USE_LINE_NUMBERS
     int32_t line_number;    // Desired line number to report when executing.
   #endif
+  uint8_t backlash_motion;
 } plan_line_data_t;
 
 
