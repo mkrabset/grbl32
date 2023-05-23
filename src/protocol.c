@@ -394,6 +394,7 @@ void protocol_exec_rt_system()
           st_reset();
           gc_sync_position();
           plan_sync_position();
+          mc_sync_backlash_position();
         }
         if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) { // Only occurs when safety door opens during jog.
           sys.suspend &= ~(SUSPEND_JOG_CANCEL);
