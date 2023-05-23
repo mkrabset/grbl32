@@ -37,6 +37,12 @@ void mc_init(void) {
     dir_negative[i] = DIR_NEGATIV ^ (settings.homing_dir_mask & (1<<i));
   }
 
+  mc_sync_backlash_position();
+}
+
+
+void mc_sync_backlash_position(void) {
+  int32_t current_position[N_AXIS] = {0};
 	memcpy(current_position, sys_position, sizeof(sys_position));
 	system_convert_array_steps_to_mpos(target_prev, current_position);
 }
@@ -418,6 +424,7 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
   st_reset(); // Reset step segment buffer.
   plan_reset(); // Reset planner buffer. Zero planner positions. Ensure probing motion is cleared.
   plan_sync_position(); // Sync planner position to current machine position.
+  mc_sync_backlash_position();
 
   #ifdef MESSAGE_PROBE_COORDINATES
     // All done! Output the probe position as message.

@@ -45,6 +45,8 @@
 
 void mc_init(void);
 
+void mc_sync_backlash_position(void);
+
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
